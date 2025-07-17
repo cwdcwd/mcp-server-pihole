@@ -31,8 +31,13 @@ class PiHoleClient {
     }
 
     try {
+      // Pi-hole v6 uses /api/auth endpoint with JSON payload
       const response = await axios.post(`${this.baseUrl}/api/auth`, {
         password: this.password
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       })
       
       if (response.data && response.data.session && response.data.session.sid) {
@@ -44,7 +49,7 @@ class PiHoleClient {
       if (axios.isAxiosError(error)) {
         throw new McpError(
           ErrorCode.InternalError,
-          `Pi-hole authentication error: ${error.response?.status} ${error.response?.statusText}`
+          `Pi-hole authentication error: ${error.response?.status} ${error.response?.statusText} - ${JSON.stringify(error.response?.data)}`
         )
       }
       throw new McpError(ErrorCode.InternalError, `Authentication failed: ${error}`)
@@ -52,12 +57,13 @@ class PiHoleClient {
   }
 
   private async makeRequest(endpoint: string, params: Record<string, any> = {}, method: string = 'GET') {
+    // For Pi-hole v6 API, we use REST endpoints
+    const url = `${this.baseUrl}${endpoint}`
+
     // Authenticate first if needed for admin endpoints
     if (this.isAdminEndpoint(endpoint)) {
       await this.authenticate()
     }
-
-    const url = `${this.baseUrl}/api${endpoint}`
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
@@ -105,7 +111,7 @@ class PiHoleClient {
         }
         throw new McpError(
           ErrorCode.InternalError,
-          `Pi-hole API error: ${error.response?.status} ${error.response?.statusText}`
+          `Pi-hole API error: ${error.response?.status} ${error.response?.statusText} - Response: ${JSON.stringify(error.response?.data)} - URL: ${url} - Params: ${JSON.stringify(params)}`
         )
       }
       throw new McpError(ErrorCode.InternalError, `Request failed: ${error}`)
@@ -114,111 +120,107 @@ class PiHoleClient {
 
   private isAdminEndpoint(endpoint: string): boolean {
     const adminEndpoints = [
-      '/dns/blocking', 
-      '/domains', 
-      '/groups', 
-      '/clients',
-      '/stats/summary',
-      '/stats/query_types',
-      '/stats/upstreams',
-      '/stats/top_domains',
-      '/stats/top_clients', 
-      '/stats/top_blocked',
-      '/stats/history',
-      '/queries'
+      '/api/dns/blocking',
+      '/api/domains',
+      '/api/clients'
     ]
     
-    // Check if it's an admin endpoint
-    return adminEndpoints.some(admin => endpoint.startsWith(admin)) || 
-           endpoint.includes('enable') || endpoint.includes('disable') ||
-           endpoint.includes('add') || endpoint.includes('sub') || endpoint.includes('list')
+    // These endpoints require authentication
+    return adminEndpoints.some(admin => endpoint.startsWith(admin))
   }
 
   // Public API methods
   async getStatus() {
-    return this.makeRequest('/dns/blocking')
+    return this.makeRequest('/api/dns/blocking')
   }
 
   async getSummary() {
-    return this.makeRequest('/stats/summary')
+    return this.makeRequest('/api/stats/summary')
   }
 
   async getQueryTypes() {
-    return this.makeRequest('/stats/query_types')
+    return this.makeRequest('/api/stats/query_types')
   }
 
   async getForwardDestinations() {
-    return this.makeRequest('/stats/upstreams')
+    return this.makeRequest('/api/stats/upstreams')
   }
 
   async getTopItems(count: number = 10) {
-    return this.makeRequest('/stats/top_domains', { limit: count })
+    return this.makeRequest('/api/stats/top_domains', { limit: count })
   }
 
   async getTopClients(count: number = 10) {
-    return this.makeRequest('/stats/top_clients', { limit: count })
+    return this.makeRequest('/api/stats/top_clients', { limit: count })
   }
 
   async getTopBlockedDomains(count: number = 10) {
-    return this.makeRequest('/stats/top_blocked', { limit: count })
+    return this.makeRequest('/api/stats/top_blocked', { limit: count })
   }
 
   async getQueryTypesOverTime() {
-    return this.makeRequest('/stats/history')
+    return this.makeRequest('/api/stats/history')
   }
 
   async getClientsOverTime() {
-    return this.makeRequest('/stats/history')
+    return this.makeRequest('/api/stats/clients_over_time')
   }
 
   async getForwardDestinationsOverTime() {
-    return this.makeRequest('/stats/history')
+    return this.makeRequest('/api/stats/forward_destinations_over_time')
   }
 
   async getRecentBlocked(count: number = 10) {
-    return this.makeRequest('/queries', { blocked: 'true', limit: count })
+    return this.makeRequest('/api/queries', { blocked: true, limit: count })
   }
 
   // Admin API methods (require authentication)
   async enable() {
-    return this.makeRequest('/dns/blocking', {}, 'DELETE')
+    return this.makeRequest('/api/dns/blocking', { blocking: true }, 'POST')
   }
 
   async disable(seconds?: number) {
-    const data = seconds ? { timer: seconds } : {}
-    return this.makeRequest('/dns/blocking', data, 'POST')
+    const data: { blocking: boolean; timer?: number } = { blocking: false }
+    if (seconds) {
+      data.timer = seconds
+    }
+    return this.makeRequest('/api/dns/blocking', data, 'POST')
   }
 
   async addToWhitelist(domain: string) {
-    return this.makeRequest('/domains', { domain, type: 'allow' }, 'POST')
+    return this.makeRequest('/api/domains/allow', { 
+      domain: domain
+    }, 'POST')
   }
 
   async removeFromWhitelist(domain: string) {
-    return this.makeRequest(`/domains/${encodeURIComponent(domain)}`, {}, 'DELETE')
+    return this.makeRequest(`/api/domains/allow/${encodeURIComponent(domain)}`, {}, 'DELETE')
   }
 
   async addToBlacklist(domain: string) {
-    return this.makeRequest('/domains', { domain, type: 'block' }, 'POST')
+    return this.makeRequest('/api/domains/deny', { 
+      domain: domain
+    }, 'POST')
   }
 
   async removeFromBlacklist(domain: string) {
-    return this.makeRequest(`/domains/${encodeURIComponent(domain)}`, {}, 'DELETE')
+    return this.makeRequest(`/api/domains/deny/${encodeURIComponent(domain)}`, {}, 'DELETE')
   }
 
   async getWhitelist() {
-    return this.makeRequest('/domains', { type: 'allow' })
+    return this.makeRequest('/api/domains/allow')
   }
 
   async getBlacklist() {
-    return this.makeRequest('/domains', { type: 'block' })
+    return this.makeRequest('/api/domains/deny')
   }
 
   async flushLogs() {
-    return this.makeRequest('/queries', {}, 'DELETE')
+    return this.makeRequest('/api/queries', {}, 'DELETE')
   }
 
   async getTailLog(lines: number = 100) {
-    return this.makeRequest('/queries', { limit: lines })
+    return this.makeRequest('/api/queries', { limit: lines })
   }
 }
 
