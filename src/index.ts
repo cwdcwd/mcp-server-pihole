@@ -51,7 +51,7 @@ class PiHoleClient {
     }
   }
 
-  private async makeRequest(endpoint: string, params: Record<string, any> = {}) {
+  private async makeRequest(endpoint: string, params: Record<string, any> = {}, method: string = 'GET') {
     // Authenticate first if needed for admin endpoints
     if (this.isAdminEndpoint(endpoint)) {
       await this.authenticate()
@@ -69,7 +69,18 @@ class PiHoleClient {
     }
 
     try {
-      const response = await axios.get(url, { headers, params })
+      let response
+      if (method === 'GET') {
+        response = await axios.get(url, { headers, params })
+      } else if (method === 'POST') {
+        response = await axios.post(url, params, { headers })
+      } else if (method === 'PUT') {
+        response = await axios.put(url, params, { headers })
+      } else if (method === 'DELETE') {
+        response = await axios.delete(url, { headers, data: params })
+      } else {
+        throw new Error(`Unsupported HTTP method: ${method}`)
+      }
       return response.data
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -79,8 +90,17 @@ class PiHoleClient {
           if (this.isAdminEndpoint(endpoint)) {
             await this.authenticate()
             headers['X-FTL-SID'] = this.sessionId!
-            const retryResponse = await axios.get(url, { headers, params })
-            return retryResponse.data
+            let retryResponse
+            if (method === 'GET') {
+              retryResponse = await axios.get(url, { headers, params })
+            } else if (method === 'POST') {
+              retryResponse = await axios.post(url, params, { headers })
+            } else if (method === 'PUT') {
+              retryResponse = await axios.put(url, params, { headers })
+            } else if (method === 'DELETE') {
+              retryResponse = await axios.delete(url, { headers, data: params })
+            }
+            return retryResponse?.data
           }
         }
         throw new McpError(
@@ -93,7 +113,22 @@ class PiHoleClient {
   }
 
   private isAdminEndpoint(endpoint: string): boolean {
-    const adminEndpoints = ['/dns/blocking', '/domains', '/groups', '/clients']
+    const adminEndpoints = [
+      '/dns/blocking', 
+      '/domains', 
+      '/groups', 
+      '/clients',
+      '/stats/summary',
+      '/stats/query_types',
+      '/stats/upstreams',
+      '/stats/top_domains',
+      '/stats/top_clients', 
+      '/stats/top_blocked',
+      '/stats/history',
+      '/queries'
+    ]
+    
+    // Check if it's an admin endpoint
     return adminEndpoints.some(admin => endpoint.startsWith(admin)) || 
            endpoint.includes('enable') || endpoint.includes('disable') ||
            endpoint.includes('add') || endpoint.includes('sub') || endpoint.includes('list')
@@ -109,81 +144,81 @@ class PiHoleClient {
   }
 
   async getQueryTypes() {
-    return this.makeRequest('', { queryTypes: '' })
+    return this.makeRequest('/stats/query_types')
   }
 
   async getForwardDestinations() {
-    return this.makeRequest('', { forwardDestinations: '' })
+    return this.makeRequest('/stats/upstreams')
   }
 
   async getTopItems(count: number = 10) {
-    return this.makeRequest('', { topItems: count })
+    return this.makeRequest('/stats/top_domains', { limit: count })
   }
 
   async getTopClients(count: number = 10) {
-    return this.makeRequest('', { getQuerySources: count })
+    return this.makeRequest('/stats/top_clients', { limit: count })
   }
 
   async getTopBlockedDomains(count: number = 10) {
-    return this.makeRequest('', { topBlockedDomains: count })
+    return this.makeRequest('/stats/top_blocked', { limit: count })
   }
 
   async getQueryTypesOverTime() {
-    return this.makeRequest('', { queryTypesOverTime: '' })
+    return this.makeRequest('/stats/history')
   }
 
   async getClientsOverTime() {
-    return this.makeRequest('', { clientsOverTime: '' })
+    return this.makeRequest('/stats/history')
   }
 
   async getForwardDestinationsOverTime() {
-    return this.makeRequest('', { forwardDestinationsOverTime: '' })
+    return this.makeRequest('/stats/history')
   }
 
   async getRecentBlocked(count: number = 10) {
-    return this.makeRequest('', { recentBlocked: count })
+    return this.makeRequest('/queries', { blocked: 'true', limit: count })
   }
 
   // Admin API methods (require authentication)
   async enable() {
-    return this.makeRequest('enable')
+    return this.makeRequest('/dns/blocking', {}, 'DELETE')
   }
 
   async disable(seconds?: number) {
-    const params = seconds ? { seconds } : {}
-    return this.makeRequest('disable', params)
+    const data = seconds ? { timer: seconds } : {}
+    return this.makeRequest('/dns/blocking', data, 'POST')
   }
 
   async addToWhitelist(domain: string) {
-    return this.makeRequest('list', { list: 'white', add: domain })
+    return this.makeRequest('/domains', { domain, type: 'allow' }, 'POST')
   }
 
   async removeFromWhitelist(domain: string) {
-    return this.makeRequest('list', { list: 'white', sub: domain })
+    return this.makeRequest(`/domains/${encodeURIComponent(domain)}`, {}, 'DELETE')
   }
 
   async addToBlacklist(domain: string) {
-    return this.makeRequest('list', { list: 'black', add: domain })
+    return this.makeRequest('/domains', { domain, type: 'block' }, 'POST')
   }
 
   async removeFromBlacklist(domain: string) {
-    return this.makeRequest('list', { list: 'black', sub: domain })
+    return this.makeRequest(`/domains/${encodeURIComponent(domain)}`, {}, 'DELETE')
   }
 
   async getWhitelist() {
-    return this.makeRequest('list', { list: 'white' })
+    return this.makeRequest('/domains', { type: 'allow' })
   }
 
   async getBlacklist() {
-    return this.makeRequest('list', { list: 'black' })
+    return this.makeRequest('/domains', { type: 'block' })
   }
 
   async flushLogs() {
-    return this.makeRequest('flush')
+    return this.makeRequest('/queries', {}, 'DELETE')
   }
 
   async getTailLog(lines: number = 100) {
-    return this.makeRequest('tail', { lines })
+    return this.makeRequest('/queries', { limit: lines })
   }
 }
 
