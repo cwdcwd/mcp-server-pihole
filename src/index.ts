@@ -119,10 +119,21 @@ class PiHoleClient {
   }
 
   private isAdminEndpoint(endpoint: string): boolean {
+    // Endpoints that definitely require authentication based on Pi-hole v6 source
     const adminEndpoints = [
       '/api/dns/blocking',
       '/api/domains',
-      '/api/clients'
+      '/api/clients',
+      '/api/stats/summary',
+      '/api/stats/query_types',
+      '/api/stats/upstreams',
+      '/api/stats/top_domains',
+      '/api/stats/top_clients',
+      '/api/stats/recent_blocked',
+      '/api/history',
+      '/api/logs',
+      '/api/action',
+      '/api/queries'
     ]
     
     // These endpoints require authentication
@@ -147,31 +158,31 @@ class PiHoleClient {
   }
 
   async getTopItems(count: number = 10) {
-    return this.makeRequest('/api/stats/top_domains', { limit: count })
+    return this.makeRequest('/api/stats/top_domains', { count: count })
   }
 
   async getTopClients(count: number = 10) {
-    return this.makeRequest('/api/stats/top_clients', { limit: count })
+    return this.makeRequest('/api/stats/top_clients', { count: count })
   }
 
   async getTopBlockedDomains(count: number = 10) {
-    return this.makeRequest('/api/stats/top_blocked', { limit: count })
+    return this.makeRequest('/api/stats/top_domains', { blocked: true, count: count })
   }
 
   async getQueryTypesOverTime() {
-    return this.makeRequest('/api/stats/history')
+    return this.makeRequest('/api/history')
   }
 
   async getClientsOverTime() {
-    return this.makeRequest('/api/stats/clients_over_time')
+    return this.makeRequest('/api/history/clients')
   }
 
   async getForwardDestinationsOverTime() {
-    return this.makeRequest('/api/stats/forward_destinations_over_time')
+    return this.makeRequest('/api/stats/database/upstreams')
   }
 
   async getRecentBlocked(count: number = 10) {
-    return this.makeRequest('/api/queries', { blocked: true, limit: count })
+    return this.makeRequest('/api/stats/recent_blocked', { count: count })
   }
 
   // Admin API methods (require authentication)
@@ -188,23 +199,27 @@ class PiHoleClient {
   }
 
   async addToWhitelist(domain: string) {
-    return this.makeRequest('/api/domains/allow', { 
+    return this.makeRequest('/api/domains/allow/exact', { 
       domain: domain
     }, 'POST')
   }
 
   async removeFromWhitelist(domain: string) {
-    return this.makeRequest(`/api/domains/allow/${encodeURIComponent(domain)}`, {}, 'DELETE')
+    return this.makeRequest('/api/domains/allow/exact', { 
+      domain: domain
+    }, 'DELETE')
   }
 
   async addToBlacklist(domain: string) {
-    return this.makeRequest('/api/domains/deny', { 
+    return this.makeRequest('/api/domains/deny/exact', { 
       domain: domain
     }, 'POST')
   }
 
   async removeFromBlacklist(domain: string) {
-    return this.makeRequest(`/api/domains/deny/${encodeURIComponent(domain)}`, {}, 'DELETE')
+    return this.makeRequest('/api/domains/deny/exact', { 
+      domain: domain
+    }, 'DELETE')
   }
 
   async getWhitelist() {
@@ -216,11 +231,11 @@ class PiHoleClient {
   }
 
   async flushLogs() {
-    return this.makeRequest('/api/queries', {}, 'DELETE')
+    return this.makeRequest('/api/action/flush_logs', {}, 'POST')
   }
 
   async getTailLog(lines: number = 100) {
-    return this.makeRequest('/api/queries', { limit: lines })
+    return this.makeRequest('/api/logs/ftl', { lines: lines })
   }
 }
 
