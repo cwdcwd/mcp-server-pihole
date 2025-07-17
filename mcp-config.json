@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "pihole": {
+      "command": "docker",
+      "args": [
+        "run", 
+        "--rm", 
+        "-i",
+        "--env-file", 
+        ".env",
+        "pihole-mcp-server"
+      ],
+      "env": {
+        "PIHOLE_BASE_URL": "${PIHOLE_BASE_URL}",
+        "PIHOLE_PASSWORD": "${PIHOLE_PASSWORD}"
+      }
+    }
+  }
+}

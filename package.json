@@ -10,8 +10,12 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "node --env-file=.env --loader tsx/esm src/index.ts",
-    "debug": "node --env-file=.env debug-test.js"
+    "dev": "node --env-file=.env --import tsx/esm src/index.ts",
+    "debug": "node --env-file=.env debug-test.js",
+    "docker:build": "docker build -t pihole-mcp-server .",
+    "docker:run": "docker run --env-file .env pihole-mcp-server",
+    "docker:compose": "docker-compose up --build",
+    "docker:compose:down": "docker-compose down"
   },
   "keywords": [
     "mcp",
@@ -22,13 +26,12 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.4.0",
-    "axios": "^1.6.0"
+    "@modelcontextprotocol/sdk": "^0.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
-    "tsx": "^4.0.0"
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
   },
   "files": [
     "dist/**/*"

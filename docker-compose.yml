@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  pihole-mcp:
+    build: .
+    container_name: pihole-mcp-server
+    environment:
+      - PIHOLE_BASE_URL=${PIHOLE_BASE_URL}
+      - PIHOLE_PASSWORD=${PIHOLE_PASSWORD}
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    # For MCP gateway integration, we need to expose stdio
+    stdin_open: true
+    tty: true
+    # Optional: if you need HTTP access for debugging
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount .env file if it exists
+      - ./.env:/app/.env:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Health check passed')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  mcp-network:
+    driver: bridge

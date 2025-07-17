@@ -8,7 +8,6 @@ import {
   ListToolsRequestSchema,
   McpError,
 } from "@modelcontextprotocol/sdk/types.js"
-import axios from "axios"
 
 // Pi-hole API client class
 class PiHoleClient {
@@ -32,24 +31,32 @@ class PiHoleClient {
 
     try {
       // Pi-hole v6 uses /api/auth endpoint with JSON payload
-      const response = await axios.post(`${this.baseUrl}/api/auth`, {
-        password: this.password
-      }, {
+      const response = await fetch(`${this.baseUrl}/api/auth`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          password: this.password
+        })
       })
       
-      if (response.data && response.data.session && response.data.session.sid) {
-        this.sessionId = response.data.session.sid
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      
+      if (data && data.session && data.session.sid) {
+        this.sessionId = data.session.sid
       } else {
         throw new Error('Authentication failed: No session ID received')
       }
     } catch (error) {
-      if (axios.isAxiosError(error)) {
+      if (error instanceof Error) {
         throw new McpError(
           ErrorCode.InternalError,
-          `Pi-hole authentication error: ${error.response?.status} ${error.response?.statusText} - ${JSON.stringify(error.response?.data)}`
+          `Pi-hole authentication error: ${error.message}`
         )
       }
       throw new McpError(ErrorCode.InternalError, `Authentication failed: ${error}`)
@@ -75,45 +82,113 @@ class PiHoleClient {
     }
 
     try {
-      let response
+      let response: Response
+      
       if (method === 'GET') {
-        response = await axios.get(url, { headers, params })
+        // For GET requests, add params as query string
+        const urlParams = new URLSearchParams()
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            urlParams.append(key, String(value))
+          }
+        })
+        const queryString = urlParams.toString()
+        const getUrl = queryString ? `${url}?${queryString}` : url
+        
+        response = await fetch(getUrl, {
+          method: 'GET',
+          headers
+        })
       } else if (method === 'POST') {
-        response = await axios.post(url, params, { headers })
+        response = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(params)
+        })
       } else if (method === 'PUT') {
-        response = await axios.put(url, params, { headers })
+        response = await fetch(url, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(params)
+        })
       } else if (method === 'DELETE') {
-        response = await axios.delete(url, { headers, data: params })
+        response = await fetch(url, {
+          method: 'DELETE',
+          headers,
+          body: Object.keys(params).length > 0 ? JSON.stringify(params) : undefined
+        })
       } else {
         throw new Error(`Unsupported HTTP method: ${method}`)
       }
-      return response.data
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
+      
+      if (!response.ok) {
         // If we get 401, clear session and retry once
-        if (error.response?.status === 401 && this.sessionId) {
+        if (response.status === 401 && this.sessionId) {
           this.sessionId = undefined
           if (this.isAdminEndpoint(endpoint)) {
             await this.authenticate()
             headers['X-FTL-SID'] = this.sessionId!
-            let retryResponse
+            
+            let retryResponse: Response
             if (method === 'GET') {
-              retryResponse = await axios.get(url, { headers, params })
+              const urlParams = new URLSearchParams()
+              Object.entries(params).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                  urlParams.append(key, String(value))
+                }
+              })
+              const queryString = urlParams.toString()
+              const getUrl = queryString ? `${url}?${queryString}` : url
+              
+              retryResponse = await fetch(getUrl, {
+                method: 'GET',
+                headers
+              })
             } else if (method === 'POST') {
-              retryResponse = await axios.post(url, params, { headers })
+              retryResponse = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(params)
+              })
             } else if (method === 'PUT') {
-              retryResponse = await axios.put(url, params, { headers })
+              retryResponse = await fetch(url, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify(params)
+              })
             } else if (method === 'DELETE') {
-              retryResponse = await axios.delete(url, { headers, data: params })
+              retryResponse = await fetch(url, {
+                method: 'DELETE',
+                headers,
+                body: Object.keys(params).length > 0 ? JSON.stringify(params) : undefined
+              })
+            } else {
+              throw new Error(`Unsupported HTTP method: ${method}`)
             }
-            return retryResponse?.data
+            
+            if (!retryResponse.ok) {
+              const errorText = await retryResponse.text()
+              throw new McpError(
+                ErrorCode.InternalError,
+                `Pi-hole API error: ${retryResponse.status} ${retryResponse.statusText} - Response: ${errorText} - URL: ${url}`
+              )
+            }
+            
+            return await retryResponse.json()
           }
         }
         
+        const errorText = await response.text()
         throw new McpError(
           ErrorCode.InternalError,
-          `Pi-hole API error: ${error.response?.status} ${error.response?.statusText} - Response: ${JSON.stringify(error.response?.data)} - URL: ${url}`
+          `Pi-hole API error: ${response.status} ${response.statusText} - Response: ${errorText} - URL: ${url}`
         )
+      }
+      
+      return await response.json()
+    } catch (error) {
+      if (error instanceof McpError) {
+        throw error
       }
       throw new McpError(ErrorCode.InternalError, `Request failed: ${error}`)
     }
