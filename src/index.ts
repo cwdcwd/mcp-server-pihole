@@ -199,9 +199,7 @@ class PiHoleClient {
   }
 
   async removeFromWhitelist(domain: string) {
-    return this.makeRequest('/api/domains/allow/exact', { 
-      domain: domain
-    }, 'DELETE')
+    return this.makeRequest(`/api/domains/allow/exact/${encodeURIComponent(domain)}`, {}, 'DELETE')
   }
 
   async addToBlacklist(domain: string) {
@@ -211,9 +209,7 @@ class PiHoleClient {
   }
 
   async removeFromBlacklist(domain: string) {
-    return this.makeRequest('/api/domains/deny/exact', { 
-      domain: domain
-    }, 'DELETE')
+    return this.makeRequest(`/api/domains/deny/exact/${encodeURIComponent(domain)}`, {}, 'DELETE')
   }
 
   async getWhitelist() {
