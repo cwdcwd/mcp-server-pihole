@@ -109,9 +109,10 @@ class PiHoleClient {
             return retryResponse?.data
           }
         }
+        
         throw new McpError(
           ErrorCode.InternalError,
-          `Pi-hole API error: ${error.response?.status} ${error.response?.statusText} - Response: ${JSON.stringify(error.response?.data)} - URL: ${url} - Params: ${JSON.stringify(params)}`
+          `Pi-hole API error: ${error.response?.status} ${error.response?.statusText} - Response: ${JSON.stringify(error.response?.data)} - URL: ${url}`
         )
       }
       throw new McpError(ErrorCode.InternalError, `Request failed: ${error}`)
@@ -119,25 +120,18 @@ class PiHoleClient {
   }
 
   private isAdminEndpoint(endpoint: string): boolean {
-    // Endpoints that definitely require authentication based on Pi-hole v6 source
-    const adminEndpoints = [
-      '/api/dns/blocking',
-      '/api/domains',
-      '/api/clients',
-      '/api/stats/summary',
-      '/api/stats/query_types',
-      '/api/stats/upstreams',
-      '/api/stats/top_domains',
-      '/api/stats/top_clients',
-      '/api/stats/recent_blocked',
-      '/api/history',
-      '/api/logs',
-      '/api/action',
-      '/api/queries'
+    // In Pi-hole v6, most API endpoints require authentication
+    // Only a few public endpoints don't require auth
+    const publicEndpoints = [
+      '/api/info/client',
+      '/api/info/login'
     ]
     
-    // These endpoints require authentication
-    return adminEndpoints.some(admin => endpoint.startsWith(admin))
+    // Check if this is a public endpoint
+    const isPublic = publicEndpoints.some(pub => endpoint.startsWith(pub))
+    
+    // If it's not explicitly public, it requires authentication
+    return !isPublic
   }
 
   // Public API methods
@@ -256,7 +250,12 @@ function initializePiHole() {
   const password = process.env.PIHOLE_PASSWORD || process.env.PIHOLE_API_KEY || process.env.PIHOLE_TOKEN
 
   if (!baseUrl) {
-    throw new Error("PIHOLE_BASE_URL environment variable is required")
+    throw new Error("PIHOLE_BASE_URL environment variable is required. Please set it to your Pi-hole URL (e.g., http://192.168.1.100)")
+  }
+
+  if (!password) {
+    console.error("Warning: No Pi-hole password provided. Set PIHOLE_PASSWORD environment variable for full API access.")
+    console.error("Some endpoints may not work without authentication.")
   }
 
   pihole = new PiHoleClient(baseUrl, password)

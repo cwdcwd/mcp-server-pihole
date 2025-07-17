@@ -10,7 +10,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "dev": "node --env-file=.env --loader tsx/esm src/index.ts",
+    "debug": "node --env-file=.env debug-test.js"
   },
   "keywords": [
     "mcp",
