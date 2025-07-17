@@ -240,3 +240,35 @@ You can set these in:
 ### API Compatibility
 This server is designed for Pi-hole v6. For older versions, you may need to modify the API endpoints.
 
+## Code Architecture
+
+This project is organized into modular TypeScript files for better maintainability:
+
+### Source Structure
+```
+src/
+├── index.ts       # Main entry point and configuration
+├── types.ts       # TypeScript interfaces and type definitions  
+├── constants.ts   # Application constants and enums
+├── client.ts      # Pi-hole API client implementation
+├── tools.ts       # MCP tool definitions
+├── handler.ts     # Tool execution handler  
+└── server.ts      # MCP server setup and initialization
+```
+
+### Key Components
+
+- **PiHoleClient** (`client.ts`) - Handles all Pi-hole API communication with authentication, retry logic, and error handling
+- **PiHoleToolHandler** (`handler.ts`) - Maps MCP tool calls to client methods and formats responses
+- **PiHoleMCPServer** (`server.ts`) - Sets up the MCP server with request handlers
+- **Tool Definitions** (`tools.ts`) - Defines all available MCP tools organized by category
+- **Configuration** (`index.ts`) - Loads environment variables and starts the server
+
+### Build Process
+
+The TypeScript source is compiled to JavaScript in the `dist/` directory:
+```bash
+npm run build  # Compiles TypeScript to dist/
+npm start      # Runs the compiled JavaScript
+```
+
