@@ -12,7 +12,7 @@ meta:
 about:
   title: Pi-hole MCP Server
   description: An MCP server that provides tools for interacting with Pi-hole's API, allowing you to manage DNS blocking, view statistics, and control your Pi-hole instance.
-  icon: https://avatars.githubusercontent.com/u/10983016?s=200&v=4
+  icon: https://avatars.githubusercontent.com/cwdcwd?s=200&v=4
 source:
   project: https://github.com/cwdcwd/mcp-server-pihole
 config:
