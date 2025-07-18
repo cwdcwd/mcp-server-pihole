@@ -3,7 +3,7 @@
 An MCP (Model Context Protocol) server that provides tools for interacting with Pi-hole's API.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Docker](https://img.shields.io/badge/Docker-Available-blue.svg)](https://hub.docker.com)
+[![Docker](https://img.shields.io/badge/Docker-Available-blue.svg)](https://hub.docker.com/r/lazybaer/pihole-mcp-server)
 
 > **Note**: This server is designed to be compatible with the [Docker MCP Registry](https://github.com/docker/mcp-registry) for easy deployment and management.
 
@@ -28,91 +28,57 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 - `flush_logs` - Clear Pi-hole logs
 - `get_tail_log` - Get recent log entries
 
-## Installation
+## Installation & Configuration
 
-### Option 1: Docker (Recommended)
+### Quick Start with Docker (Recommended)
 
-1. Clone or download this repository
-2. Create a `.env` file with your Pi-hole configuration:
+1. Clone this repository and copy the environment template:
     ```bash
-    PIHOLE_BASE_URL=http://192.168.1.100
-    PIHOLE_PASSWORD=your_admin_password
+    git clone https://github.com/cwdcwd/mcp-server-pihole.git
+    cd mcp-server-pihole
+    cp .env.example .env
     ```
 
-3. Build and run with Docker Compose:
+2. Edit `.env` with your Pi-hole details:
+    ```bash
+    PIHOLE_BASE_URL=http://pihole.local  # Your Pi-hole URL
+    PIHOLE_PASSWORD=your_admin_password  # Required for admin functions
+    ```
+
+3. Run with Docker Compose:
     ```bash
     npm run docker:compose
     ```
 
-   Or build and run manually:
-    ```bash
-    npm run docker:build
-    npm run docker:run
-    ```
+### Local Development Setup
 
-### Option 2: Local Development
-
-1. Create a new directory for your MCP server:
-    ```bash
-    mkdir pihole-mcp-server
-    cd pihole-mcp-server
-    ```
-
-2. Save the TypeScript code as `src/index.ts`
-3. Save the `package.json` file
-4. Install dependencies:
+1. Install dependencies and build:
     ```bash
     npm install
-    ```
-5. Create TypeScript configuration:
-    ```bash
-    echo '{
-      "compilerOptions": {
-        "target": "ES2020",
-        "module": "ES2020",
-        "moduleResolution": "node",
-        "esModuleInterop": true,
-        "allowSyntheticDefaultImports": true,
-        "strict": true,
-        "outDir": "./dist",
-        "rootDir": "./src",
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true
-      },
-      "include": ["src/**/*"],
-      "exclude": ["node_modules", "dist"]
-    }' > tsconfig.json
-    ```
-6. Build the project:
-    ```bash
     npm run build
     ```
 
-## Configuration
+2. Run in development mode:
+    ```bash
+    npm run dev
+    ```
 
-### Environment Variables
-Set these environment variables before running the server:
-
+### Getting Your Pi-hole Admin Password
+Find your admin password in your Pi-hole setup, or reset it:
 ```bash
-# Required: Your Pi-hole URL
-export PIHOLE_BASE_URL="http://192.168.1.100"  # Replace with your Pi-hole IP/domain
-
-# Optional: API key for admin functions (get from Pi-hole admin > Settings > API)
-export PIHOLE_API_KEY="your-api-key-here"
+# On your Pi-hole device
+sudo pihole -a -p
 ```
 
-### Getting Your Pi-hole API Key
-1. Open your Pi-hole admin interface
-2. Go to Settings → API / Web interface
-3. Click "Show API token"
-4. Copy the token and set it as `PIHOLE_API_KEY`
-
 ## Usage with Claude Desktop
-Add this to your Claude Desktop MCP configuration:
 
-### macOS
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Add this server to your Claude Desktop MCP configuration:
 
+### Configuration File Location
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+### Configuration Example
 ```json
 {
   "mcpServers": {
@@ -120,130 +86,60 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
       "command": "node",
       "args": ["/path/to/pihole-mcp-server/dist/index.js"],
       "env": {
-        "PIHOLE_BASE_URL": "http://192.168.1.100",
-        "PIHOLE_API_KEY": "your-api-key-here"
+        "PIHOLE_BASE_URL": "http://pihole.local",
+        "PIHOLE_PASSWORD": "your_admin_password"
       }
     }
   }
 }
 ```
 
-### Windows
-Edit `%APPDATA%\Claude\claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "pihole": {
-      "command": "node",
-      "args": ["C:\\path\\to\\pihole-mcp-server\\dist\\index.js"],
-      "env": {
-        "PIHOLE_BASE_URL": "http://192.168.1.100",
-        "PIHOLE_API_KEY": "your-api-key-here"
-      }
-    }
-  }
-}
-```
-
-## Example Usage
-Once configured, you can ask Claude things like:
-
+### Example Queries
+Once configured, you can ask Claude:
 - "What's the status of my Pi-hole?"
 - "Show me the top blocked domains"
 - "Add facebook.com to the blacklist"
-- "What are the recent blocked queries?"
 - "Disable Pi-hole for 5 minutes"
-- "Show me my Pi-hole statistics"
 
-## Security Notes
-- The API key is sensitive - keep it secure
-- Some operations (like enabling/disabling) require the API key
-- The server connects to your local Pi-hole instance
-- Only provide the API key if you want admin capabilities
+## Docker Usage
 
-## Troubleshooting
-- **Connection Issues**: Ensure your Pi-hole is accessible from where you're running the MCP server
-- **Authentication Issues**: Double-check your API key
-- **Permission Issues**: Some operations require the API key to be set
-- **Network Issues**: Ensure there are no firewalls blocking the connection
-
-## Development
-To run in development mode:
-
+### Docker Compose (Recommended)
 ```bash
-npm run dev
+npm run docker:compose      # Start with compose
+npm run docker:compose:down # Stop
 ```
 
-This uses `tsx` to run TypeScript directly without compilation.
+### Manual Docker Commands
+```bash
+npm run docker:build  # Build image
+npm run docker:run    # Run container
+```
 
-## API Reference
-The server wraps the Pi-hole API endpoints documented at:
-
-[Pi-hole API Documentation](https://docs.pi-hole.net/api/api_reference/)
-
-All responses are returned as JSON and include the raw Pi-hole API response data.
-
-## Docker MCP Gateway Integration
-
-For use with Docker MCP Gateway, you can use the provided `mcp-config.json`:
-
+### MCP Gateway Integration
+For Docker MCP Gateway, use the provided `mcp-config.json`:
 ```json
 {
   "mcpServers": {
     "pihole": {
       "command": "docker",
-      "args": [
-        "run", 
-        "--rm", 
-        "-i",
-        "--env-file", 
-        ".env",
-        "pihole-mcp-server"
-      ],
-      "env": {
-        "PIHOLE_BASE_URL": "${PIHOLE_BASE_URL}",
-        "PIHOLE_PASSWORD": "${PIHOLE_PASSWORD}"
-      }
+      "args": ["run", "--rm", "-i", "--env-file", ".env", "pihole-mcp-server"]
     }
   }
 }
 ```
 
-### Docker Commands
-
-- **Build image**: `npm run docker:build`
-- **Run container**: `npm run docker:run`
-- **Start with compose**: `npm run docker:compose`
-- **Stop compose**: `npm run docker:compose:down`
-
-### Environment Variables
-
-The Docker container expects these environment variables:
-- `PIHOLE_BASE_URL` - Your Pi-hole URL (e.g., `http://192.168.1.100`)
-- `PIHOLE_PASSWORD` - Your Pi-hole admin password
-
-You can set these in:
-1. `.env` file (recommended for local development)
-2. `docker-compose.yml` environment section
-3. Docker run command with `-e` flags
-
-### Security Notes
-
-- The container runs as a non-root user for security
-- Sensitive data should be provided via environment variables
-- The `.env` file is excluded from the Docker build context
-- Use Docker secrets in production environments
-
 ## Troubleshooting
 
-### Docker Issues
-- Ensure your `.env` file exists and contains the required variables
-- Check that your Pi-hole is accessible from the Docker container's network
-- For network issues, you may need to use `host.docker.internal` instead of `localhost`
+### Common Issues
+- **Connection Issues**: Ensure Pi-hole is accessible (try `ping pihole.local`)
+- **Authentication Issues**: Verify your admin password is correct
+- **Docker Network Issues**: Use `host.docker.internal` instead of `localhost` if needed
+- **Permission Issues**: Admin operations require the `PIHOLE_PASSWORD`
 
-### API Compatibility
-This server is designed for Pi-hole v6. For older versions, you may need to modify the API endpoints.
+### API Reference
+This server wraps Pi-hole's API documented at: [Pi-hole API Documentation](https://docs.pi-hole.net/api/api_reference/)
+
+All responses include the raw Pi-hole API response data in JSON format.
 
 ## Code Architecture
 
