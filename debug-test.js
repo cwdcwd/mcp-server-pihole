@@ -5,7 +5,7 @@
 import axios from 'axios';
 
 async function testPiHoleAuth() {
-  const baseUrl = process.env.PIHOLE_BASE_URL || process.env.PIHOLE_URL || "http://192.168.0.2";
+  const baseUrl = process.env.PIHOLE_BASE_URL || process.env.PIHOLE_URL || "http://pihole.local";
   const password = process.env.PIHOLE_PASSWORD || process.env.PIHOLE_API_KEY || process.env.PIHOLE_TOKEN;
   
   console.log("Testing Pi-hole authentication...");

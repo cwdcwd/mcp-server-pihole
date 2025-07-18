@@ -2,6 +2,11 @@
 
 An MCP (Model Context Protocol) server that provides tools for interacting with Pi-hole's API.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docker](https://img.shields.io/badge/Docker-Available-blue.svg)](https://hub.docker.com)
+
+> **Note**: This server is designed to be compatible with the [Docker MCP Registry](https://github.com/docker/mcp-registry) for easy deployment and management.
+
 ## Features
 
 ### Public API Tools (No Authentication Required)
@@ -271,4 +276,20 @@ The TypeScript source is compiled to JavaScript in the `dist/` directory:
 npm run build  # Compiles TypeScript to dist/
 npm start      # Runs the compiled JavaScript
 ```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
+- Setting up the development environment
+- Running tests
+- Submitting pull requests
+- Reporting bugs
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 MCP Registry
+
+This server is designed to be compatible with the [Docker MCP Registry](https://github.com/docker/mcp-registry). The `server.yaml` file contains the configuration needed for registry submission.
 
