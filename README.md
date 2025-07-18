@@ -185,7 +185,28 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 MCP Registry
+## � CI/CD & Releases
+
+This project includes automated CI/CD workflows:
+
+### Docker Image Publishing
+- **Automatic Publishing**: Docker images are automatically built and published to [Docker Hub](https://hub.docker.com/r/lazybaer/pihole-mcp-server) when a new release is tagged
+- **Multi-Architecture**: Images are built for both `linux/amd64` and `linux/arm64` platforms
+- **Semantic Versioning**: Tags follow semantic versioning (e.g., `v1.0.0`, `v1.0`, `v1`, `latest`)
+
+### Development Workflows
+- **Build Testing**: All pull requests and pushes are automatically tested with Docker builds
+- **Security Scanning**: Images are scanned for vulnerabilities using Trivy
+- **Quality Assurance**: Automated checks ensure the Docker image builds correctly and the application starts
+
+### Creating a Release
+To publish a new Docker image:
+1. Create a new tag following semantic versioning: `git tag v1.0.1`
+2. Push the tag: `git push origin v1.0.1`
+3. Create a GitHub release from the tag
+4. The Docker image will be automatically built and published
+
+## �🔗 MCP Registry
 
 This server is designed to be compatible with the [Docker MCP Registry](https://github.com/docker/mcp-registry). The `server.yaml` file contains the configuration needed for registry submission.
 
