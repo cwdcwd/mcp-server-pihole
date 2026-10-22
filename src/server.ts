@@ -20,6 +20,11 @@ export class PiHoleMCPServer {
       {
         name: "pihole-mcp-server",
         version: "1.0.0",
+      },
+      {
+        capabilities: {
+          tools: {},
+        },
       }
     )
 
