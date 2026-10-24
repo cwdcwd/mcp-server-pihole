@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { PiHoleMCPServer } from "./server.js"
+import { httpOptionsFromEnvironment, createHttpMcpServer, listenHttp } from "./http.js"
 import { PiHoleConfig } from "./types.js"
 
 /**
@@ -30,17 +31,27 @@ class PiHoleServerConfig {
 async function main(): Promise<void> {
   try {
     const config = PiHoleServerConfig.fromEnvironment()
+    if (process.env.PIHOLE_MCP_TRANSPORT?.toLowerCase() === "http") {
+      const options = httpOptionsFromEnvironment()
+      const httpServer = createHttpMcpServer(config, options)
+      const address = await listenHttp(httpServer, options.host, options.port)
+      console.error(`Pi-hole MCP HTTP server listening on ${address.address}:${address.port}/mcp`)
+      const shutdown = () => httpServer.close(() => process.exit(0))
+      process.once("SIGINT", shutdown)
+      process.once("SIGTERM", shutdown)
+      return
+    }
+
     const server = new PiHoleMCPServer(config)
     await server.start()
-    console.error("Pi-hole MCP server started successfully")
+    console.error("Pi-hole MCP server started successfully over stdio")
   } catch (error) {
-    console.error("Fatal error:", error)
+    console.error("Fatal error:", error instanceof Error ? error.message : "Unknown startup error")
     process.exit(1)
   }
 }
 
-// Error handling for the main function
 main().catch((error) => {
-  console.error("Fatal error:", error)
+  console.error("Fatal error:", error instanceof Error ? error.message : "Unknown startup error")
   process.exit(1)
 })

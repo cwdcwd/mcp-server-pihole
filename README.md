@@ -70,9 +70,24 @@ Find your admin password in your Pi-hole setup, or reset it:
 sudo pihole -a -p
 ```
 
-## Usage with Claude Desktop
+### Authenticated Streamable HTTP
 
-Add this server to your Claude Desktop MCP configuration:
+The server keeps stdio as the default. To expose the stateless Streamable HTTP transport at `/mcp`, set `PIHOLE_MCP_TRANSPORT=http` and provide a dedicated `MCP_TOKEN`. The listener binds to `127.0.0.1:3000` by default; configure `PIHOLE_MCP_HTTP_HOST` and `PIHOLE_MCP_HTTP_PORT` explicitly to expose another interface. Set `PIHOLE_MCP_ALLOWED_HOSTS` and `PIHOLE_MCP_ALLOWED_ORIGINS` to the exact hostnames and origins used by trusted clients. Host validation rejects unapproved Host headers; Origin validation rejects unapproved browser origins. Requests must send MCP_TOKEN (the MCP bearer token) before MCP parsing or tool execution.
+
+Example environment (do not commit real credentials):
+
+```dotenv
+PIHOLE_MCP_TRANSPORT=http
+MCP_TOKEN=<long-random-token>
+PIHOLE_MCP_HTTP_HOST=0.0.0.0
+PIHOLE_MCP_HTTP_PORT=3000
+PIHOLE_MCP_ALLOWED_HOSTS=pihole-mcp.local,192.168.1.20
+PIHOLE_MCP_ALLOWED_ORIGINS=https://trusted-client.example
+```
+
+Run with `npm start`. Stdio clients remain supported by omitting or setting `PIHOLE_MCP_TRANSPORT=stdio`.
+
+## Usage with Claude Desktop
 
 ### Configuration File Location
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
