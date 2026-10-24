@@ -2,6 +2,42 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js"
 import { PiHoleConfig, RequestParams } from "./types.js"
 import { PUBLIC_ENDPOINTS, HTTP_METHODS } from "./constants.js"
 
+export type QueryLogFilters = {
+  from?: number
+  until?: number
+  length?: number
+  start?: number
+  cursor?: number
+  domain?: string
+  client_ip?: string
+  upstream?: string
+  type?: string
+  status?: string
+  reply?: string
+  dnssec?: string
+  disk?: boolean
+}
+
+export type DomainType = "allow" | "deny"
+export type DomainKind = "exact" | "regex"
+
+export type DomainListFilters = {
+  type?: DomainType
+  kind?: DomainKind
+}
+
+export type DomainMutation = {
+  type: DomainType
+  kind: DomainKind
+  domain: string
+  comment?: string
+}
+
+const QUERY_LOG_FILTERS = new Set([
+  "from", "until", "length", "start", "cursor", "domain", "client_ip",
+  "upstream", "type", "status", "reply", "dnssec", "disk",
+])
+
 // Pi-hole API client class
 export class PiHoleClient {
   private readonly baseUrl: string
@@ -172,6 +208,82 @@ export class PiHoleClient {
 
   async getRecentBlocked(count: number = 10): Promise<any> {
     return this.makeRequest('/api/stats/recent_blocked', { count })
+  }
+
+  async getQueryLog(filters: QueryLogFilters = {}): Promise<any> {
+    const normalized: RequestParams = {}
+    for (const [key, value] of Object.entries(filters)) {
+      if (!QUERY_LOG_FILTERS.has(key)) {
+        throw new McpError(ErrorCode.InvalidParams, `Unsupported query log filter: ${key}`)
+      }
+      if (value === undefined) continue
+      if (key === "length" || key === "start" || key === "from" || key === "until" || key === "cursor") {
+        if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0 || (key === "length" && value < 1)) {
+          throw new McpError(ErrorCode.InvalidParams, `${key} must be a ${key === "length" ? "positive" : "non-negative"} safe integer`)
+        }
+      } else if (key === "disk") {
+        if (typeof value !== "boolean") throw new McpError(ErrorCode.InvalidParams, "disk must be a boolean")
+      } else if (typeof value !== "string" || value.trim().length === 0) {
+        throw new McpError(ErrorCode.InvalidParams, `${key} must be a non-empty string`)
+      }
+      normalized[key] = value
+    }
+    return this.makeRequest('/api/queries', normalized)
+  }
+
+  async listDomains(filters: DomainListFilters = {}): Promise<any> {
+    const { type, kind } = filters
+    if (type !== undefined && type !== "allow" && type !== "deny") {
+      throw new McpError(ErrorCode.InvalidParams, "type must be allow or deny")
+    }
+    if (kind !== undefined && kind !== "exact" && kind !== "regex") {
+      throw new McpError(ErrorCode.InvalidParams, "kind must be exact or regex")
+    }
+    const endpoint = type === undefined
+      ? "/api/domains"
+      : kind === undefined
+        ? `/api/domains/${type}`
+        : `/api/domains/${type}/${kind}`
+    return this.makeRequest(endpoint)
+  }
+
+  async addDomain(input: DomainMutation): Promise<any> {
+    this.validateDomainMutation(input)
+    const { type, kind, domain, comment } = input
+    return this.makeRequest(`/api/domains/${type}/${kind}`, {
+      domain,
+      ...(comment === undefined ? {} : { comment }),
+    }, HTTP_METHODS.POST)
+  }
+
+  async removeDomain(input: Pick<DomainMutation, "type" | "kind" | "domain">): Promise<any> {
+    this.validateDomainMutation(input)
+    const { type, kind, domain } = input
+    return this.makeRequest(`/api/domains/${type}/${kind}/${encodeURIComponent(domain)}`, {}, HTTP_METHODS.DELETE)
+  }
+
+  async updateGravity(): Promise<any> {
+    return this.makeRequest('/api/action/gravity', {}, HTTP_METHODS.POST)
+  }
+
+  async flushDnsCache(): Promise<any> {
+    // Pi-hole v6 has no cache-flush action; restarting DNS clears the FTL cache.
+    return this.makeRequest('/api/action/restartdns', {}, HTTP_METHODS.POST)
+  }
+
+  private validateDomainMutation(input: Pick<DomainMutation, "type" | "kind" | "domain">): void {
+    if (input.type !== "allow" && input.type !== "deny") {
+      throw new McpError(ErrorCode.InvalidParams, "type must be allow or deny")
+    }
+    if (input.kind !== "exact" && input.kind !== "regex") {
+      throw new McpError(ErrorCode.InvalidParams, "kind must be exact or regex")
+    }
+    if (typeof input.domain !== "string" || input.domain.trim().length === 0) {
+      throw new McpError(ErrorCode.InvalidParams, "domain must be a non-empty string")
+    }
+    if ("comment" in input && input.comment !== undefined && typeof input.comment !== "string") {
+      throw new McpError(ErrorCode.InvalidParams, "comment must be a string")
+    }
   }
 
   // Control methods (require authentication)
