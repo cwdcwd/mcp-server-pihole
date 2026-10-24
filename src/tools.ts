@@ -17,6 +17,76 @@ export const TOOL_DEFINITIONS: ToolCategory = {
   
   statistics: [
     {
+      name: "get_query_log",
+      description: "Search Pi-hole's query log with optional v6 filters and pagination",
+      inputSchema: {
+        type: "object",
+        properties: {
+          from: { type: "number", description: "Unix timestamp lower bound" },
+          until: { type: "number", description: "Unix timestamp upper bound" },
+          length: { type: "number", description: "Number of queries to return (positive integer)" },
+          start: { type: "number", description: "Query offset (non-negative integer)" },
+          cursor: { type: "number", description: "Database ID cursor" },
+          domain: { type: "string", description: "Filter by domain; Pi-hole supports wildcards" },
+          client_ip: { type: "string", description: "Filter by client IP; Pi-hole supports wildcards" },
+          upstream: { type: "string", description: "Filter by upstream server" },
+          type: { type: "string", description: "Filter by query type (A, AAAA, ...)" },
+          status: { type: "string", description: "Filter by query status (GRAVITY, FORWARDED, ...)" },
+          reply: { type: "string", description: "Filter by reply type" },
+          dnssec: { type: "string", description: "Filter by DNSSEC status" },
+          disk: { type: "boolean", description: "Read from on-disk query database" },
+        },
+      },
+    },
+    {
+      name: "list_domains",
+      description: "List Pi-hole v6 allow/deny domains, optionally filtered by exact or regex kind",
+      inputSchema: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["allow", "deny"] },
+          kind: { type: "string", enum: ["exact", "regex"] },
+        },
+      },
+    },
+    {
+      name: "add_domain",
+      description: "Add an exact or regex domain to the Pi-hole v6 allow/deny list, with an optional comment",
+      inputSchema: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["allow", "deny"] },
+          kind: { type: "string", enum: ["exact", "regex"] },
+          domain: { type: "string", description: "Domain or regex pattern" },
+          comment: { type: "string", description: "Optional domain-list comment" },
+        },
+        required: ["type", "kind", "domain"],
+      },
+    },
+    {
+      name: "remove_domain",
+      description: "Remove an exact or regex domain from the Pi-hole v6 allow/deny list",
+      inputSchema: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["allow", "deny"] },
+          kind: { type: "string", enum: ["exact", "regex"] },
+          domain: { type: "string", description: "Domain or regex pattern to remove" },
+        },
+        required: ["type", "kind", "domain"],
+      },
+    },
+    {
+      name: "update_gravity",
+      description: "Run a Pi-hole v6 gravity update",
+      inputSchema: { type: "object", properties: {} },
+    },
+    {
+      name: "flush_dns_cache",
+      description: "Flush the Pi-hole DNS cache by restarting the v6 DNS resolver",
+      inputSchema: { type: "object", properties: {} },
+    },
+    {
       name: "get_query_types",
       description: "Get breakdown of DNS query types (A, AAAA, PTR, etc.)",
       inputSchema: { type: "object", properties: {} },

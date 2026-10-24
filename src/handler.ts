@@ -1,5 +1,5 @@
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js"
-import { PiHoleClient } from "./client.js"
+import { PiHoleClient, DomainListFilters, DomainMutation, QueryLogFilters } from "./client.js"
 import { tools } from "./tools.js"
 import { RequestParams } from "./types.js"
 
@@ -38,6 +38,20 @@ export class PiHoleToolHandler {
         return this.createResponse(await this.client.getTopBlockedDomains(args.count as number))
       case "get_recent_blocked":
         return this.createResponse(await this.client.getRecentBlocked(args.count as number))
+      case "get_query_log":
+        return this.createResponse(await this.client.getQueryLog(args as QueryLogFilters))
+
+      // Domain management tools
+      case "list_domains":
+        return this.createResponse(await this.client.listDomains(args as DomainListFilters))
+      case "add_domain":
+        return this.createResponse(await this.client.addDomain(args as DomainMutation))
+      case "remove_domain":
+        return this.createResponse(await this.client.removeDomain(args as Pick<DomainMutation, "type" | "kind" | "domain">))
+      case "update_gravity":
+        return this.createResponse(await this.client.updateGravity())
+      case "flush_dns_cache":
+        return this.createResponse(await this.client.flushDnsCache())
 
       // Control tools
       case "enable_pihole":
