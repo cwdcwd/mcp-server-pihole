@@ -154,7 +154,7 @@ describe("secure stateless Streamable HTTP transport", () => {
     assert(responses.every((response) => response.status === 200))
     assert(responses.every((response) => response.headers.get("mcp-session-id") === null))
     const bodies = await Promise.all(responses.map((response) => response.json())) as Array<{ result?: { tools?: unknown[] } }>
-    assert(bodies.every((body) => (body.result?.tools?.length ?? 0) >= 18))
+    assert(bodies.every((body) => (body.result?.tools?.length ?? 0) >= 24))
   })
 })
 

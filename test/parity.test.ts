@@ -137,6 +137,37 @@ describe("Pi-hole v6 bridge parity", () => {
     }
   })
 
+  it("preserves every Python-bridge tool behavior while retaining TypeScript extras", async () => {
+    const api = fakeApi()
+    try {
+      const client = new PiHoleClient({ baseUrl: "http://pihole.test", password: "fake" })
+      const handler = new PiHoleToolHandler(client)
+      const names = new Set(handler.getAvailableTools().map(({ name }) => name))
+      const legacyMappings = [
+        "get_pihole_summary",
+        "get_top_items",
+        "get_top_clients",
+        "get_recent_blocked",
+        "get_query_log",
+        "get_pihole_status",
+        "enable_pihole",
+        "disable_pihole",
+        "list_domains",
+        "add_domain",
+        "remove_domain",
+        "update_gravity",
+        "flush_dns_cache",
+      ]
+      for (const name of legacyMappings) assert(names.has(name), `missing bridge mapping ${name}`)
+      assert.equal(names.size, 24, "all six parity tools and all 18 TypeScript tools are available")
+      for (const name of ["get_query_types", "get_forward_destinations", "get_top_blocked_domains", "get_whitelist", "flush_logs"]) {
+        assert(names.has(name), `existing TypeScript extra was lost: ${name}`)
+      }
+    } finally {
+      api.restore()
+    }
+  })
+
   it("turns Pi-hole HTTP failures into MCP internal errors", async () => {
     const originalFetch = globalThis.fetch
     globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: "denied" } }), { status: 403 })
