@@ -32,9 +32,11 @@ Map the server's settings (values omitted) to the overlay's required names:
 | `PIHOLE_PASSWORD` | `PIHOLE_MCP_TS_PASSWORD` |
 | `MCP_TOKEN` | `PIHOLE_MCP_TS_MCP_TOKEN` |
 
-The retired Python deployment used the equivalent names `PIHOLE_HOST`, `PIHOLE_APP_PASSWORD`, and `PIHOLE_MCP_TOKEN`; those names are historical.
+The retired Python deployment used equivalent legacy names, so deployments written before the cutover map `PIHOLE_HOST` to `PIHOLE_MCP_TS_BASE_URL`, `PIHOLE_APP_PASSWORD` to `PIHOLE_MCP_TS_PASSWORD`, and `PIHOLE_MCP_TOKEN` to `PIHOLE_MCP_TS_MCP_TOKEN`; those legacy names are historical.
 
-`PIHOLE_MCP_TS_BASE_URL` takes a full URL including scheme, not a bare hostname or an IP with a path. Set `PIHOLE_MCP_TS_ALLOWED_HOSTS` and `PIHOLE_MCP_TS_ALLOWED_ORIGINS` to exact trusted client values. `PIHOLE_MCP_TS_PUBLISH_ADDRESS` defaults to loopback; use a non-loopback address only when an authorized network path requires it. The sidecar listens on all container interfaces and the host publish address controls exposure. Copy secret values only through the approved secret manager or a local ignored environment file; never commit them.
+`PIHOLE_MCP_TS_BASE_URL` takes a full URL including scheme (for example `http://pihole.local`), not a bare hostname or an IP with a path. The overlay's healthcheck probes the container's own loopback listener with a core node:http client — an undici fetch probe would silently drop the forbidden `host` header — claiming the first PIHOLE_MCP_TS_ALLOWED_HOSTS entry as its Host header, so no extra loopback entry is required in the allowlist. Set `PIHOLE_MCP_TS_ALLOWED_HOSTS` and `PIHOLE_MCP_TS_ALLOWED_ORIGINS` to exact trusted client values. `PIHOLE_MCP_TS_PUBLISH_ADDRESS` defaults to loopback; use a non-loopback address only when an authorized network path requires it. The sidecar listens on all container interfaces and the host publish address controls exposure. Copy secret values only through the approved secret manager or a local ignored environment file; never commit them.
+
+To start only the isolated sidecar locally after setting its required environment names, use `docker compose -f docker-compose.yml -f docker-compose.sidecar.yml up --build pihole-mcp-http-sidecar`; required `PIHOLE_MCP_TS_*` variables fail fast at activation, never on a plain `docker compose up`. The supported local arm64 build invocation is `docker buildx build --platform linux/arm64 --load -t pihole-mcp-server:sidecar .`; this lane documents the path but does not publish an image.
 
 ### Option 1: Direct Docker Command
 
