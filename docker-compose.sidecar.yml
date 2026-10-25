@@ -27,7 +27,12 @@ services:
     ports:
       - "${PIHOLE_MCP_TS_PUBLISH_ADDRESS:-127.0.0.1}:${PIHOLE_MCP_TS_HTTP_PORT:-3002}:${PIHOLE_MCP_TS_HTTP_PORT:-3002}"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + process.env.PIHOLE_MCP_HTTP_PORT + '/healthz', {headers:{host:process.env.PIHOLE_MCP_ALLOWED_HOSTS.split(',')[0].trim(),authorization:'Bearer ' + process.env.MCP_TOKEN}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      # The probe deliberately uses a core node:http client: undici fetch
+      # silently drops the forbidden host header, so a fetch-based probe
+      # cannot claim an allowed host. It connects to the container's own
+      # loopback listener and claims the first PIHOLE_MCP_TS_ALLOWED_HOSTS
+      # entry as its Host header, which src/http.ts's gate accepts.
+      test: ["CMD", "node", "-e", "const http=require('node:http');const hh=(process.env.PIHOLE_MCP_ALLOWED_HOSTS||'').split(',')[0].trim();const hp=process.env.PIHOLE_MCP_HTTP_PORT||'3002';const q=http.request({host:'127.0.0.1',port:hp,path:'/healthz',headers:{host:hh,authorization:'Bearer ' + process.env.MCP_TOKEN},timeout:3000},r=>process.exit(r.statusCode===200?0:1));q.on('timeout',()=>process.exit(1));q.on('error',()=>process.exit(1));q.end()"]
       interval: 30s
       timeout: 5s
       retries: 3
