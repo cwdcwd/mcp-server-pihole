@@ -9,24 +9,15 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ## Features
 
-### Public API Tools (No Authentication Required)
-- `get_pihole_status` - Check if Pi-hole is enabled/disabled
-- `get_pihole_summary` - Get statistics summary
-- `get_query_types` - Get DNS query type breakdown
-- `get_forward_destinations` - Get upstream DNS server info
-- `get_top_items` - Get top queried domains
-- `get_top_clients` - Get top clients by query count
-- `get_top_blocked_domains` - Get top blocked domains
-- `get_recent_blocked` - Get recently blocked domains
+### Available tools
 
-### Admin API Tools (Requires API Key)
-- `enable_pihole` - Enable Pi-hole blocking
-- `disable_pihole` - Disable Pi-hole blocking (temporarily)
-- `add_to_whitelist` / `remove_from_whitelist` - Manage whitelist
-- `add_to_blacklist` / `remove_from_blacklist` - Manage blacklist
-- `get_whitelist` / `get_blacklist` - View lists
-- `flush_logs` - Clear Pi-hole logs
-- `get_tail_log` - Get recent log entries
+The server exposes 24 tools. Pi-hole-side authentication uses `PIHOLE_PASSWORD` (or a supported legacy alias); the optional HTTP transport is separately protected by the required `MCP_TOKEN` bearer token.
+
+- **Status and statistics:** `get_pihole_status`, `get_pihole_summary`, `get_query_log`, `get_query_types`, `get_forward_destinations`, `get_top_items`, `get_top_clients`, `get_top_blocked_domains`, `get_recent_blocked`
+- **Domain management:** `list_domains`, `add_domain`, `remove_domain`, `add_to_whitelist`, `remove_from_whitelist`, `add_to_blacklist`, `remove_from_blacklist`, `get_whitelist`, `get_blacklist`
+- **Control and logs:** `enable_pihole`, `disable_pihole`, `update_gravity`, `flush_dns_cache`, `flush_logs`, `get_tail_log`
+
+`update_gravity`, `flush_dns_cache`, the enable/disable controls, domain/list changes, and `flush_logs` change Pi-hole state. Treat them as write operations.
 
 ## Installation & Configuration
 
@@ -72,7 +63,7 @@ sudo pihole -a -p
 
 ### Authenticated Streamable HTTP
 
-The server keeps stdio as the default. To expose the stateless Streamable HTTP transport at `/mcp`, set `PIHOLE_MCP_TRANSPORT=http` and provide a dedicated `MCP_TOKEN`. The listener binds to `127.0.0.1:3000` by default; configure `PIHOLE_MCP_HTTP_HOST` and `PIHOLE_MCP_HTTP_PORT` explicitly to expose another interface. Set `PIHOLE_MCP_ALLOWED_HOSTS` and `PIHOLE_MCP_ALLOWED_ORIGINS` to the exact hostnames and origins used by trusted clients. Host validation rejects unapproved Host headers; Origin validation rejects unapproved browser origins. Requests must send MCP_TOKEN (the MCP bearer token) before MCP parsing or tool execution.
+The server keeps stdio as the default. Set `PIHOLE_MCP_TRANSPORT=http` to enable stateless Streamable HTTP at `/mcp`. Supply `MCP_TOKEN` as a long, random bearer token: the server rejects requests without it or with an invalid token before MCP parsing or tool execution. The `/healthz` readiness endpoint is also bearer-protected and does not call Pi-hole. Host headers are restricted by `PIHOLE_MCP_ALLOWED_HOSTS`; browser Origin headers, when present, are restricted by `PIHOLE_MCP_ALLOWED_ORIGINS`. Configure exact values for the address and port clients use. The default listener is loopback at `127.0.0.1:3000`; set `PIHOLE_MCP_HTTP_HOST` and `PIHOLE_MCP_HTTP_PORT` explicitly when a different bind is required.
 
 Example environment (do not commit real credentials):
 
