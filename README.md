@@ -11,7 +11,7 @@ An MCP (Model Context Protocol) server that provides tools for interacting with 
 
 ### Available tools
 
-The server exposes 24 tools. Pi-hole-side authentication uses `PIHOLE_PASSWORD` (or a supported legacy alias); the optional HTTP transport is separately protected by the required `MCP_TOKEN` bearer token.
+The server exposes 24 tools. Pi-hole-side authentication uses `PIHOLE_PASSWORD`; legacy aliases `PIHOLE_API_KEY` and `PIHOLE_TOKEN` are also accepted for the password, and `PIHOLE_URL` is accepted as an alias for `PIHOLE_BASE_URL`. The optional HTTP transport is separately protected by the required `MCP_TOKEN` bearer token.
 
 - **Status and statistics:** `get_pihole_status`, `get_pihole_summary`, `get_query_log`, `get_query_types`, `get_forward_destinations`, `get_top_items`, `get_top_clients`, `get_top_blocked_domains`, `get_recent_blocked`
 - **Domain management:** `list_domains`, `add_domain`, `remove_domain`, `add_to_whitelist`, `remove_from_whitelist`, `add_to_blacklist`, `remove_from_blacklist`, `get_whitelist`, `get_blacklist`
