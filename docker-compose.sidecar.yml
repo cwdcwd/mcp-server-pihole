@@ -1,0 +1,39 @@
+# Side-by-side TypeScript HTTP sidecar (opt-in overlay).
+# Activate only with:
+#   docker compose -f docker-compose.yml -f docker-compose.sidecar.yml up --build pihole-mcp-http-sidecar
+# Plain `docker compose up` never reads this file, so the existing
+# pihole-mcp service and its :3000 mapping are untouched. The required
+# PIHOLE_MCP_TS_* checks below fail fast at activation, never on the
+# default profile.
+services:
+  pihole-mcp-http-sidecar:
+    profiles: [sidecar]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pihole-mcp-server:sidecar
+    container_name: pihole-mcp-http-sidecar
+    environment:
+      NODE_ENV: production
+      PIHOLE_MCP_TRANSPORT: http
+      PIHOLE_BASE_URL: ${PIHOLE_MCP_TS_BASE_URL:?Set PIHOLE_MCP_TS_BASE_URL}
+      PIHOLE_PASSWORD: ${PIHOLE_MCP_TS_PASSWORD:?Set PIHOLE_MCP_TS_PASSWORD}
+      MCP_TOKEN: ${PIHOLE_MCP_TS_MCP_TOKEN:?Set PIHOLE_MCP_TS_MCP_TOKEN}
+      PIHOLE_MCP_HTTP_HOST: 0.0.0.0
+      PIHOLE_MCP_HTTP_PORT: ${PIHOLE_MCP_TS_HTTP_PORT:-3002}
+      PIHOLE_MCP_ALLOWED_HOSTS: ${PIHOLE_MCP_TS_ALLOWED_HOSTS:?Set PIHOLE_MCP_TS_ALLOWED_HOSTS}
+      PIHOLE_MCP_ALLOWED_ORIGINS: ${PIHOLE_MCP_TS_ALLOWED_ORIGINS:?Set PIHOLE_MCP_TS_ALLOWED_ORIGINS}
+    restart: unless-stopped
+    ports:
+      - "${PIHOLE_MCP_TS_PUBLISH_ADDRESS:-127.0.0.1}:${PIHOLE_MCP_TS_HTTP_PORT:-3002}:${PIHOLE_MCP_TS_HTTP_PORT:-3002}"
+    healthcheck:
+      # The probe deliberately uses a core node:http client: undici fetch
+      # silently drops the forbidden host header, so a fetch-based probe
+      # cannot claim an allowed host. It connects to the container's own
+      # loopback listener and claims the first PIHOLE_MCP_TS_ALLOWED_HOSTS
+      # entry as its Host header, which src/http.ts's gate accepts.
+      test: ["CMD", "node", "-e", "const http=require('node:http');const hh=(process.env.PIHOLE_MCP_ALLOWED_HOSTS||'').split(',')[0].trim();const hp=process.env.PIHOLE_MCP_HTTP_PORT||'3002';const q=http.request({host:'127.0.0.1',port:hp,path:'/healthz',headers:{host:hh,authorization:'Bearer ' + process.env.MCP_TOKEN},timeout:3000},r=>process.exit(r.statusCode===200?0:1));q.on('timeout',()=>process.exit(1));q.on('error',()=>process.exit(1));q.end()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

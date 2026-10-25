@@ -145,6 +145,44 @@ describe("secure stateless Streamable HTTP transport", () => {
     assert.equal(apiCalls, callsBeforeTool + 1)
   })
 
+  it("serves authenticated health/readiness without calling Pi-hole", async () => {
+    const beforeCalls = apiCalls
+    const unauthorized = await fetch(`http://127.0.0.1:${port}/healthz`, {
+      headers: { host: `localhost:${port}` },
+    })
+    assert.equal(unauthorized.status, 401)
+
+    const ready = await fetch(`http://127.0.0.1:${port}/healthz`, {
+      headers: { host: `localhost:${port}`, authorization: `Bearer ${token}` },
+    })
+    assert.equal(ready.status, 200)
+    assert.deepEqual(await ready.json(), { status: "ready" })
+    assert.equal(apiCalls, beforeCalls)
+
+    const wrongHost = await new Promise<number>((resolve, reject) => {
+      const request = httpRequest({
+        host: "127.0.0.1",
+        port,
+        path: "/healthz",
+        method: "GET",
+        headers: { host: `evil.example:${port}`, authorization: `Bearer ${token}` },
+      }, (response) => {
+        response.resume()
+        response.on("end", () => resolve(response.statusCode ?? 0))
+      })
+      request.on("error", reject)
+      request.end()
+    })
+    assert.equal(wrongHost, 421)
+
+    const wrongMethod = await fetch(`http://127.0.0.1:${port}/healthz`, {
+      method: "POST",
+      headers: { host: `localhost:${port}`, authorization: `Bearer ${token}` },
+    })
+    assert.equal(wrongMethod.status, 405)
+    assert.equal(apiCalls, beforeCalls)
+  })
+
   it("handles concurrent independent stateless requests", async () => {
     const responses = await Promise.all(Array.from({ length: 8 }, (_, index) => post({
       jsonrpc: "2.0",

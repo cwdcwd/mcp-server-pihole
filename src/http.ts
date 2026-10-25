@@ -93,12 +93,26 @@ export function createHttpMcpServer(config: PiHoleConfig, options: HttpTransport
   if (!options.token) throw new Error("A non-empty MCP bearer token is required")
 
   return createHttpServer(async (request, response) => {
-    if (request.url?.split("?", 1)[0] !== "/mcp") {
+    const path = request.url?.split("?", 1)[0]
+    if (path !== "/mcp" && path !== "/healthz") {
       reject(response, 404, "Not found")
       return
     }
     if (!isAllowedHost(request, options.allowedHosts)) {
       reject(response, 421, "Misdirected request")
+      return
+    }
+    if (path === "/healthz") {
+      if (request.method !== "GET") {
+        reject(response, 405, "Method not allowed")
+        return
+      }
+      if (!authorized(request, options.token)) {
+        reject(response, 401, "Unauthorized")
+        return
+      }
+      response.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" })
+      response.end(JSON.stringify({ status: "ready" }))
       return
     }
     if (!isAllowedOrigin(request, options.allowedOrigins)) {
